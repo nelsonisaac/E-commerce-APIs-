@@ -90,7 +90,7 @@ export const signup = async (req, res) => {
     await user.save();//saving user in the DB
     const secret_key = process.env.JWT_SECRET_KEY;
     const token = jwt.sign({ id: user._id }, secret_key);
-    res.status(201).json({ success:true,token, user });
+    res.status(201).json({ success: true, token, user });
 }
 
 
@@ -108,13 +108,52 @@ export const login = async (req, res) => {
         }
 
         const secret_key = process.env.JWT_SECRET_KEY;
-        console.log(secret_key);
         const token = jwt.sign({ id: checkUser._id }, secret_key);
-        res.status(200).json({ success:"true",token, checkUser });
+        res.status(200).json({ success: "true", token, checkUser });
 
     } catch (err) {
         res.status(400).json({ msg: err.message });
     }
+}
+
+//Middleware to fetch user 
+export const fetchUser = (req, res, next) => {
+    const token = req.header('auth-token');
+    if (!token) {
+        res.status(401).send({ errors: "please auhtnticate suing valid credentials" })
+    } else {
+        try {
+            const data = jwt.verify(token, process.env.JWT_SECRET_KEY);
+            req.user = data;
+            next();
+        } catch (err) {
+            res.status(401).send({ error: "please authenticate using valid token" })
+        }
+    }
+}
+
+/**METHOD TO ADD CARTITEMS */
+export const addCartItems = async (req, res) => {
+    let userData = await Users.findOne({ _id: req.user.id });
+    userData.cartData[req.body.itemId] += 1;
+    await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
+    res.send("added");
+}
+
+/**METHOD TO REMOVE CARTITEMS */
+export const removeCartItems = async( req, res) =>{
+    let userData = await Users.findOne({ _id: req.user.id });
+    if(userData.cartData[req.body.itemId] > 0){
+        userData.cartData[req.body.itemId] -= 1;
+        await Users.findOneAndUpdate({ _id: req.user.id }, { cartData: userData.cartData });
+        res.send("removed");
+    }
+}
+
+/**METHOD TO GET CARTDATA AFTER LOGIN */
+export const getCartItems = async(req, res) => {
+    let userData = await Users.findOne({_id: req.user.id});
+    res.json(userData.cartData);
 }
 
 export default addProd;
